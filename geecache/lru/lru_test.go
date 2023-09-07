@@ -13,6 +13,7 @@ func (s String) Len() int {
 
 // 测试 Get 方法：获取存在/不存在的 key 的 value
 func TestGet(t *testing.T) {
+
 	lru := New(int64(0), nil)
 	lru.Add("key1", String("123"))
 	if v, ok := lru.Get("key1"); string(v.(String)) != "123" || !ok {
