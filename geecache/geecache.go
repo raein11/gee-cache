@@ -25,7 +25,7 @@ type Group struct {
 
 // 全局变量
 var (
-	mu     sync.Mutex
+	mu     sync.RWMutex // 读写锁
 	groups = make(map[string]*Group)
 )
 
@@ -45,5 +45,14 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 		mainCache: cache{cacheBytes: cacheBytes},
 	}
 	groups[name] = g
+	return g
+}
+
+// GetGroup: 根据 name 获取 Group
+func GetGroup(name string) *Group {
+	// 减小锁的粒度，这里使用只读锁，因为没有涉及到修改操作
+	mu.RLock()
+	g := groups[name]
+	mu.RUnlock()
 	return g
 }
