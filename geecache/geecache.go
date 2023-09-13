@@ -1,6 +1,9 @@
 package geecache
 
-import "sync"
+import (
+	"log"
+	"sync"
+)
 
 // Getter 接口
 type Getter interface {
@@ -55,4 +58,41 @@ func GetGroup(name string) *Group {
 	g := groups[name]
 	mu.RUnlock()
 	return g
+}
+
+// group 的 Get 方法：实现返回缓存值（1）和返回缓存值（3）
+func (g *Group) Get(key string) (ByteView, error) {
+	// 1.去除传入 key 为空的情况
+	if key == "" {
+		return ByteView{}, nil
+	}
+	// 2.判断情况（1）
+	if v, ok := g.mainCache.Get(key); ok {
+		// 缓存命中
+		log.Println("缓存命中")
+		return v, nil
+	}
+	// 缓存未命中
+	return g.load(key)
+}
+
+func (g *Group) load(key string) (ByteView, error) {
+	return g.getLocally(key)
+}
+
+func (g *Group) getLocally(key string) (ByteView, error) {
+	// 调用回调函数获取源数据
+	bytes, err := g.getter.Get(key)
+	if err != nil {
+		return ByteView{}, err
+	}
+	// 调用缓存克隆方法，封装数据
+	value := ByteView{cloneBytes(bytes)}
+	g.populateGroup(key, value)
+	return value, nil
+}
+
+// 将数据添加到缓存
+func (g *Group) populateGroup(key string, value ByteView) {
+	g.mainCache.Add(key, value)
 }
