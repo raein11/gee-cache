@@ -24,7 +24,7 @@ func NewHTTPPoll(self string) *HTTPPool {
 
 // 日志打印方法
 func (p *HTTPPool) Log(format string, v ...interface{}) {
-	log.Println("[Server %s] %s", p.self, fmt.Sprintf(format, v...))
+	log.Printf("[Server %s] %s", p.self, fmt.Sprintf(format, v...))
 }
 
 func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
