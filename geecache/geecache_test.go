@@ -28,8 +28,8 @@ func TestGet(t *testing.T) {
 	//  统计回调次数，测试缓存存在的情况下是否会调用回调函数
 	loadCounts := make(map[string]int, len(db))
 	// 构造 Group，构造完成后 每个 key 的 loadCount 的值为 1
-	// 第一次测试失败
-	gee := NewGroup("connection", 8, GetterFunc(func(key string) ([]byte, error) {
+	// 第一次测试失败 这里设置缓存大小为 8 测试不通过，因为后续加入缓存时空间不足
+	gee := NewGroup("connection", 2<<10, GetterFunc(func(key string) ([]byte, error) {
 		fmt.Println("[slowDB] search key..", key)
 		// 尝试获取缓存
 		if v, ok := db[key]; ok {
