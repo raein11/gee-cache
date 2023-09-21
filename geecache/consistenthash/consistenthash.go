@@ -50,3 +50,19 @@ func (m *Map) Add(keys ...string) {
 	}
 	sort.Ints(m.keys)
 }
+
+// 5.实现 Get 方法
+func (m *Map) Get(key string) string {
+	// 1.判断哈希环空间是否存在
+	if len(m.keys) == 0 {
+		return ""
+	}
+	// 2.通过 hash 函数获取 key 对应的缓存
+	hash := int(m.hash([]byte(key)))
+	// 3.缓存顺时针找到第一个虚拟节点, 再对应该虚拟节点的下标
+	idx := sort.Search(len(m.keys), func(i int) bool {
+		return m.keys[i] >= hash
+	})
+	// 4.通过 hashMap 得到虚拟节点对应的真实节点
+	return m.hashMap[m.keys[idx%len(m.keys)]]
+}
