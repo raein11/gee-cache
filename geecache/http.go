@@ -124,6 +124,7 @@ func (p *HTTPPool) Set(peers ...string) {
 
 var _ PeerPicker = (*HTTPPool)(nil)
 
+// 根据 key 选择对应的节点，由节点得到对应的 HTTP 客户端
 func (p *HTTPPool) PickPeer(key string) (peerGetter PeerGetter, ok bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
