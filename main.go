@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"geecache"
 	"log"
@@ -61,19 +62,29 @@ func startAPIServer(apiAddr string, gee *geecache.Group) {
 }
 
 func main() {
-	// 1.创建一个名为 scores 的 Group，若缓存为空， 回调函数会从 db 中获取数据并返回
-	geecache.NewGroup("scores", 2<<10, geecache.GetterFunc(
-		func(key string) ([]byte, error) {
-			log.Println("[SlowDB] search key", key)
-			if v, ok := db[key]; ok {
-				return []byte(v), nil
-			}
-			return nil, fmt.Errorf("%s 不存在", key)
-		}))
-	// 2.初始化参数
-	addr := "localhost:9999"
-	peers := geecache.NewHTTPPoll(addr)
-	log.Println("geecache is running at", addr)
-	// 3.在 addr 启动 HTTP 服务
-	log.Fatal(http.ListenAndServe(addr, peers))
+	var port int
+	var api bool
+	flag.IntVar(&port, "port", 8001, "Geecache 服务器端口")
+	flag.BoolVar(&api, "api", false, "启用 api 服务器？")
+	flag.Parse()
+	// 1.初始化参数
+	apiAddr := "http://localhost:9999"
+	addrMap := map[int]string{
+		8001: "http://localhost:8001",
+		8002: "http://localhost:8002",
+		8003: "http://localhost:8003",
+	}
+	var addrs []string
+	for _, v := range addrMap {
+		addrs = append(addrs, v)
+	}
+	// 2.创建一个名为 scores 的 Group，若缓存为空， 回调函数会从 db 中获取数据并返回
+	gee := createGroup()
+
+	// 3.判断是否启动 api 服务器
+	if api {
+		go startAPIServer(apiAddr, gee) // api 服务器只有一个，缓存服务器有多个，这里需要使用协程
+	}
+	// 4.启动缓存服务器
+	startCacheServer(addrMap[port], []string(addrs), gee) // 这里使用 []string(addrs) 会创建一个新的切片，底层数组不会共享
 }
