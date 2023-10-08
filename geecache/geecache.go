@@ -1,6 +1,7 @@
 package geecache
 
 import (
+	pb "geecache/geecachepb"
 	"geecache/singleflight"
 	"log"
 	"sync"
@@ -153,11 +154,30 @@ func (g Group) RegisterPeers(peers PeerPicker) {
 	g.peers = peers
 }
 
+// 未引入 protobuf
+// 使用实现了 PeerGetter 接口的 httpGetter 访问远程节点，获取缓存值
+//func (g Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
+//	bytes, err := peer.Get(g.name, key)
+//	if err != nil {
+//		return ByteView{}, err
+//	}
+//	return ByteView{b: bytes}, nil
+//}
+
+// 引入 protobuf
 // 使用实现了 PeerGetter 接口的 httpGetter 访问远程节点，获取缓存值
 func (g Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
-	bytes, err := peer.Get(g.name, key)
+	// 1.初始化 请求、响应参数
+	req := &pb.Request{
+		Group: g.name,
+		Key:   key,
+	}
+	res := &pb.Response{}
+	// 2.调用 Get 方法
+	err := peer.Get(req, res)
 	if err != nil {
 		return ByteView{}, err
 	}
-	return ByteView{b: bytes}, nil
+	// 3.返回
+	return ByteView{res.Value}, nil
 }

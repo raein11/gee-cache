@@ -3,6 +3,8 @@ package geecache
 import (
 	"fmt"
 	"geecache/consistenthash"
+	pb "geecache/geecachepb"
+	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -70,9 +72,17 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 引入 protobuf，使用 proto.Marshal() 编码 HTTP 响应
+	body, err := proto.Marshal(&pb.Response{Value: view.ByteSlice()})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// 6.到这里，获取到了缓存，设置响应头，返回类型为文件字节流
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(view.ByteSlice())
+	w.Write(body)
+
 }
 
 // HTTP 客户端类 httpGetter
@@ -86,26 +96,30 @@ var _ PeerGetter = (*httpGetter)(nil)
 // 在 httpGetter 类型的值上断言 PeerGetter 接口，断言成功则实现接口
 // 可以在编译时检查 httpGetter 是否实现 PeerGetter 接口
 
-func (h *httpGetter) Get(group string, key string) ([]byte, error) {
+func (h *httpGetter) Get(in *pb.Request, out *pb.Response) error {
 	// 1.拼接访问路径，为了安全使用 url.QueryEscape 对字符串进行转义
-	u := fmt.Sprintf("%v%v/%v", h.baseURL, url.QueryEscape(group), url.QueryEscape(key))
+	u := fmt.Sprintf(
+		"%v%v/%v",
+		h.baseURL,
+		url.QueryEscape(in.GetGroup()),
+		url.QueryEscape(in.GetKey()))
 	res, err := http.Get(u) // 获取请求响应
 	// 2.请求是否异常
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer res.Body.Close()
 	// 3.请求正常，判断响应状态码是否 OK
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("服务端返回：%v", res.StatusCode)
+		return fmt.Errorf("服务端返回：%v", res.StatusCode)
 	}
 	bytes, err := ioutil.ReadAll(res.Body)
 	// 4.状态码 OK，判断响应体是否为空
-	if err != nil {
-		return nil, fmt.Errorf("获取响应体：%v", err)
+	// 引入 protobuf，使用 proto.Unmarshal() 解码 HTTP 响应
+	if err = proto.Unmarshal(bytes, out); err != nil {
+		return fmt.Errorf("获取响应体：%v", err)
 	}
-	// 5.返回响应体
-	return bytes, nil
+	return nil
 }
 
 func (p *HTTPPool) Set(peers ...string) {
