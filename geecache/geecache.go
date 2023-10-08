@@ -88,9 +88,9 @@ func (g *Group) load(key string) (value ByteView, err error) {
 		// 2.使用 PickPeer 选择节点
 		if peer, ok := g.peers.PickPeer(key); ok {
 			// 3.尝试根据远程节点获取缓存值
-			if value, err = g.getFromPeer(peer, key); err != nil {
+			if value, err = g.getFromPeer(peer, key); err == nil {
 				// 4.返回从远程获取的节点
-				return value, err
+				return value, nil
 			}
 		}
 	}
