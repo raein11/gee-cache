@@ -15,6 +15,7 @@ type Group struct {
 	m  map[string]*call
 }
 
+// DO 方法保证 key 相同时，访问远程节点只发起一次请求
 func (g *Group) Do(key string, fn func() (interface{}, error)) (interface{}, error) {
 	// 1.对 g.m 进行操作前上锁
 	g.mu.Lock()

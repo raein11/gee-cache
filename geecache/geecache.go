@@ -1,6 +1,7 @@
 package geecache
 
 import (
+	"geecache/singleflight"
 	"log"
 	"sync"
 )
@@ -21,10 +22,11 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 }
 
 type Group struct {
-	name      string     // 唯一的名称
-	getter    Getter     // 缓存未命中时的回调
-	mainCache cache      // 并发缓存
-	peers     PeerPicker // 分布式节点
+	name      string              // 唯一的名称
+	getter    Getter              // 缓存未命中时的回调
+	mainCache cache               // 并发缓存
+	peers     PeerPicker          // 分布式节点
+	loader    *singleflight.Group // 防止缓存击穿
 }
 
 // 全局变量
@@ -47,6 +49,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 		name:      name,
 		getter:    getter,
 		mainCache: cache{cacheBytes: cacheBytes},
+		loader:    &singleflight.Group{},
 	}
 	groups[name] = g
 	return g
@@ -77,25 +80,52 @@ func (g *Group) Get(key string) (ByteView, error) {
 	return g.load(key)
 }
 
+// 第一版
 //	func (g *Group) load(key string) (ByteView, error) {
 //		return g.getLocally(key)
 //	}
 //
-// 修改后的 load 方法 使用 PickPeer 方法获取节点
+// 第二版：使用 PickPeer 方法获取节点
+//func (g *Group) load(key string) (value ByteView, err error) {
+//	// 1.判断是否存在节点
+//	if g.peers != nil {
+//		// 2.使用 PickPeer 选择节点
+//		if peer, ok := g.peers.PickPeer(key); ok {
+//			// 3.尝试根据远程节点获取缓存值
+//			if value, err = g.getFromPeer(peer, key); err == nil {
+//				// 4.返回从远程获取的节点
+//				return value, nil
+//			}
+//		}
+//	}
+//
+//	// 5.是本机节点或从远程节点获取失败则调用 getLocally 方法
+//	return g.getLocally(key)
+//}
+
+// 第三版：防止缓存击穿，对于相同的 key，load 方法只调用一次
 func (g *Group) load(key string) (value ByteView, err error) {
-	// 1.判断是否存在节点
-	if g.peers != nil {
-		// 2.使用 PickPeer 选择节点
-		if peer, ok := g.peers.PickPeer(key); ok {
-			// 3.尝试根据远程节点获取缓存值
-			if value, err = g.getFromPeer(peer, key); err == nil {
-				// 4.返回从远程获取的节点
-				return value, nil
+	// 1.调用 Do 方法尝试获取缓存，第一次获取则调用回调函数
+	view, err := g.loader.Do(key, func() (interface{}, error) {
+		// 1.1.判断是否存在节点
+		if g.peers != nil {
+			// 1.2.使用 PickPeer 选择节点
+			if peer, ok := g.peers.PickPeer(key); ok {
+				// 1.3.尝试根据远程节点获取缓存值
+				if value, err = g.getFromPeer(peer, key); err == nil {
+					// 1.4.返回从远程获取的节点
+					return value, nil
+				}
 			}
 		}
+		// 1.5.是本机节点或从远程节点获取失败则调用 getLocally 方法
+		return g.getLocally(key)
+	})
+	// 2.不是第一次获取缓存，没有报错则将缓存格式化并返回
+	if err == nil {
+		return view.(ByteView), nil
 	}
-	// 5.是本机节点或从远程节点获取失败则调用 getLocally 方法
-	return g.getLocally(key)
+	return
 }
 
 func (g *Group) getLocally(key string) (ByteView, error) {
