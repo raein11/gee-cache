@@ -113,11 +113,16 @@ func (h *httpGetter) Get(in *pb.Request, out *pb.Response) error {
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("服务端返回：%v", res.StatusCode)
 	}
+
 	bytes, err := ioutil.ReadAll(res.Body)
 	// 4.状态码 OK，判断响应体是否为空
+	if err != nil {
+		return fmt.Errorf("获取响应体：%v", err)
+	}
+
 	// 引入 protobuf，使用 proto.Unmarshal() 解码 HTTP 响应
 	if err = proto.Unmarshal(bytes, out); err != nil {
-		return fmt.Errorf("获取响应体：%v", err)
+		return fmt.Errorf("解码响应体：%v", err)
 	}
 	return nil
 }
