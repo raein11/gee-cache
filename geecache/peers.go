@@ -8,7 +8,7 @@ type PeerPicker interface {
 	PickPeer(key string) (peerGetter PeerGetter, ok bool)
 }
 
-// 2.PeerGetter
+// 2.PeerGetter 接口
 type PeerGetter interface {
 	// 修改前
 	// Get() 方法根据 key 从对应的 group 中查找缓存（PeerGetter 对应 HTTP 客户端）
