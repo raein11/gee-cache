@@ -30,7 +30,7 @@ func createGroup() *geecache.Group {
 // 实现缓存服务器 startCacheServer 函数
 func startCacheServer(addr string, addrs []string, gee *geecache.Group) {
 	// 1.创建一个 HTTPPool
-	peers := geecache.NewHTTPPoll(addr)
+	peers := geecache.NewHTTPPool(addr)
 	// 2.使用一致性哈希算法添加节点
 	peers.Set(addrs...)
 	// 3.注册节点到 Group

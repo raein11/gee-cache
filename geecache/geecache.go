@@ -44,7 +44,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 	}
 	// 考虑到并发问题，先上锁
 	mu.Lock()
-	defer mu.Unlock() // 延迟释放：在 return 之后，函数返回结果之前
+	defer mu.Unlock() // 延迟释放：在 return 之后，函数退出之前
 	// 构造 Group
 	g := &Group{
 		name:      name,

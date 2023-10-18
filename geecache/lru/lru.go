@@ -38,7 +38,7 @@ func (c *Cache) Get(key string) (value Value, ok bool) {
 	if ele, ok := c.cache[key]; ok {
 		// 存在节点，将节点移动到队尾
 		c.ll.MoveToBack(ele)
-		kv := ele.Value.(*entry) // !此处获取到的是list的Value
+		kv := ele.Value.(*entry) // !此处获取到的是list源码包中Element的Value
 		return kv.value, true
 	}
 	// 没有该节点

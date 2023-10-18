@@ -28,7 +28,7 @@ type HTTPPool struct {
 }
 
 // 初始化 HTTPPool
-func NewHTTPPoll(self string) *HTTPPool {
+func NewHTTPPool(self string) *HTTPPool {
 	return &HTTPPool{
 		self:     self,
 		basePath: defaultBasePath,
